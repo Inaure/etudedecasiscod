@@ -8,7 +8,7 @@ const User = require("../api/users/users.model");
 
 describe("tester API articles", () => {
   let token;
-  const USER_ID = "602d2149e773f2a3990b47f5"; // Id MongoDB valide
+  const USER_ID = "602d2149e773f2a3990b47f5";
 
   const MOCK_USER_DOC = {
     _id: USER_ID,
@@ -32,7 +32,6 @@ describe("tester API articles", () => {
   beforeEach(() => {
     token = jwt.sign({ userId: USER_ID, role: "admin" }, config.secretJwtToken);
 
-    // Mock création article
     mockingoose(Article).toReturn(
       { _id: "602d2149e773f2a3990b47f5", ...MOCK_ARTICLE },
       "save"
@@ -44,7 +43,7 @@ describe("tester API articles", () => {
   });
 
   test("[Articles] Create Article", async () => {
-    // Mock User admin pour ce test
+
     mockingoose(User).toReturn(MOCK_USER_DOC, "findOne");
 
     const res = await request(app)
@@ -54,8 +53,6 @@ describe("tester API articles", () => {
         content: MOCK_ARTICLE.content,
       })
       .set("x-access-token", token);
-
-    console.log("Response body:", res.body);
 
     expect(res.status).toBe(201);
     expect(res.body.title).toBe(MOCK_ARTICLE.title);
@@ -72,13 +69,12 @@ describe("tester API articles", () => {
     const UPDATED_CONTENT = "Contenu mis à jour";
 
     beforeEach(() => {
-      // Mock pour findOneAndUpdate
       mockingoose(Article).toReturn(
         {
           _id: "602d2149e773f2a3990b47f5",
           title: MOCK_ARTICLE.title,
           content: UPDATED_CONTENT,
-          user: USER_ID, // renvoyer juste l'id (mongoose peuplera)
+          user: USER_ID, 
           populate(path) {
             if (path.path === "user") {
               this.user = MOCK_USER_DOC;
@@ -92,7 +88,6 @@ describe("tester API articles", () => {
     });
 
     test("Doit mettre à jour un article si utilisateur admin", async () => {
-      // Mock User admin pour ce test
       mockingoose(User).toReturn(MOCK_USER_DOC, "findOne");
 
       const res = await request(app)
@@ -100,7 +95,7 @@ describe("tester API articles", () => {
         .send({
           content: UPDATED_CONTENT,
         })
-        .set("x-access-token", token); // token admin
+        .set("x-access-token", token);
 
       expect(res.status).toBe(200);
       expect(res.body.content).toBe(UPDATED_CONTENT);
@@ -112,13 +107,11 @@ describe("tester API articles", () => {
     });
 
     test("Doit refuser la mise à jour si utilisateur non admin", async () => {
-      // Token user simple sans rôle admin
       const userToken = jwt.sign(
         { userId: USER_ID, role: "member" },
         config.secretJwtToken
       );
 
-      // Mock User avec role "member" pour ce test
       mockingoose(User).toReturn(
         { ...MOCK_USER_DOC, role: "member" },
         "findOne"
