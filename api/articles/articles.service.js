@@ -1,6 +1,6 @@
 const Article = require("./articles.schema");
 
-class UserService {
+class ArticleService {
   create(data) {
     const article = new Article(data);
     return article.save();
@@ -11,6 +11,10 @@ class UserService {
   delete(id) {
     return Article.deleteOne({ _id: id });
   }
+
+  getArticlesByUserId(userId) {
+    return Article.find({ user: userId }).populate("user", "-password");
+  }
 }
 
-module.exports = new UserService();
+module.exports = new ArticleService();
