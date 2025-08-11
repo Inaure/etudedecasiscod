@@ -8,7 +8,7 @@ const User = require("../api/users/users.model");
 
 describe("tester API articles", () => {
   let token;
-  const USER_ID = "602d2149e773f2a3990b47f5"; // Id MongoDB valide
+  const USER_ID = "602d2149e773f2a3990b47f5"; 
 
   const MOCK_USER_DOC = {
     _id: USER_ID,
@@ -30,19 +30,21 @@ describe("tester API articles", () => {
   };
 
   beforeEach(() => {
-    token = jwt.sign({ userId: USER_ID }, config.secretJwtToken);
+    token = jwt.sign({ userId: USER_ID, role: "admin" }, config.secretJwtToken);
 
-    // Mock du User pour le middleware
-    mockingoose(User).toReturn(MOCK_USER_DOC, "findOne");
-
-    // Mock création article
     mockingoose(Article).toReturn(
       { _id: "602d2149e773f2a3990b47f5", ...MOCK_ARTICLE },
       "save"
     );
   });
 
+  afterEach(() => {
+    mockingoose.resetAll();
+  });
+
   test("[Articles] Create Article", async () => {
+    mockingoose(User).toReturn(MOCK_USER_DOC, "findOne");
+
     const res = await request(app)
       .post("/api/articles")
       .send({
@@ -50,8 +52,6 @@ describe("tester API articles", () => {
         content: MOCK_ARTICLE.content,
       })
       .set("x-access-token", token);
-
-    console.log("Response body:", res.body);
 
     expect(res.status).toBe(201);
     expect(res.body.title).toBe(MOCK_ARTICLE.title);
@@ -65,66 +65,68 @@ describe("tester API articles", () => {
   });
 
   describe("[Articles] Update Article", () => {
-  const UPDATED_CONTENT = "Contenu mis à jour";
+    const UPDATED_CONTENT = "Contenu mis à jour";
 
-  beforeEach(() => {
-    // Mock pour findOneAndUpdate
-    mockingoose(Article).toReturn(
-      {
-        _id: "602d2149e773f2a3990b47f5",
-        title: MOCK_ARTICLE.title,
-        content: UPDATED_CONTENT,
-        user: USER_ID, // renvoyer juste l'id (mongoose peuplera)
-        populate(path) {
-          if (path.path === "user") {
-            this.user = MOCK_USER_DOC;
+    beforeEach(() => {
+      mockingoose(Article).toReturn(
+        {
+          _id: "602d2149e773f2a3990b47f5",
+          title: MOCK_ARTICLE.title,
+          content: UPDATED_CONTENT,
+          user: USER_ID, 
+          populate(path) {
+            if (path.path === "user") {
+              this.user = MOCK_USER_DOC;
+              return Promise.resolve(this);
+            }
             return Promise.resolve(this);
-          }
-          return Promise.resolve(this);
+          },
         },
-      },
-      "findOneAndUpdate"
-    );
-  });
+        "findOneAndUpdate"
+      );
+    });
 
-  test("Doit mettre à jour un article si utilisateur admin", async () => {
-    const res = await request(app)
-      .put("/api/articles/602d2149e773f2a3990b47f5")
-      .send({
-        content: UPDATED_CONTENT,
-      })
-      .set("x-access-token", token); // token admin
+    test("Doit mettre à jour un article si utilisateur admin", async () => {
 
-    expect(res.status).toBe(200);
-    expect(res.body.content).toBe(UPDATED_CONTENT);
+      mockingoose(User).toReturn(MOCK_USER_DOC, "findOne");
 
-    expect(typeof res.body.user._id).toBe("string");
-    expect(res.body.user).toHaveProperty("name", MOCK_USER_DOC.name);
-    expect(res.body.user).toHaveProperty("email", MOCK_USER_DOC.email);
-    expect(res.body.user).not.toHaveProperty("password");
-  });
+      const res = await request(app)
+        .put("/api/articles/602d2149e773f2a3990b47f5")
+        .send({
+          content: UPDATED_CONTENT,
+        })
+        .set("x-access-token", token);
 
-  test("Doit refuser la mise à jour si utilisateur non admin", async () => {
-    // Token user simple sans rôle admin
-    const userToken = jwt.sign(
-      { userId: USER_ID, role: "user" },
-      config.secretJwtToken
-    );
+      expect(res.status).toBe(200);
+      expect(res.body.content).toBe(UPDATED_CONTENT);
 
-    const res = await request(app)
-      .put("/api/articles/602d2149e773f2a3990b47f5")
-      .send({
-        content: UPDATED_CONTENT,
-      })
-      .set("x-access-token", userToken);
+      expect(typeof res.body.user._id).toBe("string");
+      expect(res.body.user).toHaveProperty("name", MOCK_USER_DOC.name);
+      expect(res.body.user).toHaveProperty("email", MOCK_USER_DOC.email);
+      expect(res.body.user).not.toHaveProperty("password");
+    });
 
-    expect(res.status).toBe(403);
-    expect(res.body).toHaveProperty("message", "Forbidden");
-  });
-});
+    test("Doit refuser la mise à jour si utilisateur non admin", async () => {
 
+      const userToken = jwt.sign(
+        { userId: USER_ID, role: "member" },
+        config.secretJwtToken
+      );
 
-  afterEach(() => {
-    mockingoose.resetAll();
+      mockingoose(User).toReturn(
+        { ...MOCK_USER_DOC, role: "member" },
+        "findOne"
+      );
+
+      const res = await request(app)
+        .put("/api/articles/602d2149e773f2a3990b47f5")
+        .send({
+          content: UPDATED_CONTENT,
+        })
+        .set("x-access-token", userToken);
+
+      expect(res.status).toBe(403);
+      expect(res.body).toHaveProperty("message", "Forbidden");
+    });
   });
 });

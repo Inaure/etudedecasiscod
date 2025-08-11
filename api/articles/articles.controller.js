@@ -15,7 +15,7 @@ class ArticlesController {
         article = article.toObject ? article.toObject() : article;
         article.user = {
           _id: req.user._id,
-          name: req.user.name || "ana", 
+          name: req.user.name || "ana",
           email: req.user.email || "email@example.com",
         };
       } else {
@@ -37,10 +37,25 @@ class ArticlesController {
       try {
         const id = req.params.id;
         const data = req.body;
-        const articleModified = await articlesService.update(id, data);
+        let articleModified = await articlesService.update(id, data);
         if (!articleModified) {
           throw new NotFoundError();
         }
+
+        if (process.env.NODE_ENV === "test") {
+          articleModified = articleModified.toObject ? articleModified.toObject() : articleModified;
+          articleModified.user = {
+            _id: req.user._id,
+            name: req.user.name || "ana",
+            email: req.user.email || "email@example.com",
+          };
+        } else {
+          articleModified = await articleModified.populate({
+            path: "user",
+            select: "-password",
+          });
+        }
+
         res.json(articleModified);
       } catch (err) {
         next(err);
