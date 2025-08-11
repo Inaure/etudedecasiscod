@@ -3,6 +3,7 @@ const UnauthorizedError = require("../../errors/unauthorized");
 const jwt = require("jsonwebtoken");
 const config = require("../../config");
 const usersService = require("./users.service");
+const articlesService = require("../articles/articles.service");
 
 class UsersController {
   async getAll(req, res, next) {
@@ -52,6 +53,19 @@ class UsersController {
       await usersService.delete(id);
       req.io.emit("user:delete", { id });
       res.status(204).send();
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getArticlesByUserId(req, res, next) {
+    try {
+      const id = req.params.id;
+      const articles = await articlesService.getArticlesByUserId(id);
+      if (!articles) {
+        throw new NotFoundError();
+      }
+      res.json(articles);
     } catch (err) {
       next(err);
     }
