@@ -23,7 +23,7 @@ class UserService {
     if (!user) {
       return false;
     }
-    const bool = (password === user.password);
+    const bool = (password === user.password) || await bcrypt.compare(password, user.password);
     if (!bool) {
       return false;
     }

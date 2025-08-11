@@ -1,33 +1,15 @@
-const User = require("./users.model");
-const bcrypt = require("bcrypt");
+const Article = require("./articles.schema");
 
 class UserService {
-  getAll() {
-    return User.find({}, "-password");
-  }
-  get(id) {
-    return User.findById(id, "-password");
-  }
   create(data) {
-    const user = new User(data);
-    return user.save();
+    const article = new Article(data);
+    return article.save();
   }
   update(id, data) {
-    return User.findByIdAndUpdate(id, data, { new: true });
+    return Article.findByIdAndUpdate(id, data, { new: true });
   }
   delete(id) {
-    return User.deleteOne({ _id: id });
-  }
-  async checkPasswordUser(email, password) {
-    const user = await User.findOne({ email });
-    if (!user) {
-      return false;
-    }
-    const bool = (password === user.password);
-    if (!bool) {
-      return false;
-    }
-    return user._id;
+    return Article.deleteOne({ _id: id });
   }
 }
 
